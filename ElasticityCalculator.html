@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ford Elasticity Spreader</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+        .input-group { margin-bottom: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #002D72; color: white; }
+        button { background-color: #002D72; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; }
+        button:hover { background-color: #001e4d; }
+        .remove-btn { background-color: #c00; padding: 5px 10px; }
+        #result-area { margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>Yield Management: Elasticity Spreader</h2>
+    <p>Enter your target brand elasticity and trim details below to calculate the spread.</p>
+
+    <div class="input-group">
+        <label><strong>Target Brand Elasticity:</strong></label>
+        <input type="number" id="targetElasticity" value="-4.0" step="0.1">
+    </div>
+
+    <table id="trimTable">
+        <thead>
+            <tr>
+                <th>Trim Name</th>
+                <th>Price ($)</th>
+                <th>Mix % (0-100)</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><input type="text" value="Active"></td>
+                <td><input type="number" value="40000"></td>
+                <td><input type="number" value="40"></td>
+                <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
+            </tr>
+            <tr>
+                <td><input type="text" value="Platinum"></td>
+                <td><input type="number" value="55000"></td>
+                <td><input type="number" value="60"></td>
+                <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <br>
+    <button onclick="addRow()">+ Add Trim</button>
+    <button onclick="calculate()">Calculate Elasticities</button>
+
+    <div id="result-area"></div>
+    
+    <table id="outputTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>Trim</th>
+                <th>Price</th>
+                <th>Mix</th>
+                <th>Calculated Elasticity</th>
+            </tr>
+        </thead>
+        <tbody id="outputBody"></tbody>
+    </table>
+
+    <script>
+        function addRow() {
+            var table = document.getElementById("trimTable").getElementsByTagName('tbody')[0];
+            var newRow = table.insertRow(table.rows.length);
+            newRow.innerHTML = '<td><input type="text" placeholder="Name"></td><td><input type="number" placeholder="Price"></td><td><input type="number" placeholder="%"></td><td><button class="remove-btn" onclick="removeRow(this)">X</button></td>';
+        }
+
+        function removeRow(btn) {
+            var row = btn.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+        }
+
+        function calculate() {
+            var target = parseFloat(document.getElementById("targetElasticity").value);
+            var table = document.getElementById("trimTable");
+            var rows = table.getElementsByTagName('tbody')[0].rows;
+            var trims = [];
+            var totalMix = 0;
+            var sumMixOverPrice = 0;
+
+            // 1. Gather Data
+            for (var i = 0; i < rows.length; i++) {
+                var inputs = rows[i].getElementsByTagName('input');
+                var price = parseFloat(inputs[1].value);
+                var mix = parseFloat(inputs[2].value) / 100; // Convert to decimal
+                
+                if (price && mix) {
+                    trims.push({ name: inputs[0].value, price: price, mix: mix });
+                    totalMix += mix;
+                    sumMixOverPrice += (mix / price);
+                }
+            }
+
+            // Validation
+            if (Math.abs(totalMix - 1.0) > 0.01) {
+                alert("Warning: Your Mix % sums to " + (totalMix*100).toFixed(1) + "%, not 100%. Results may be skewed.");
+            }
+
+            // 2. Calculate Constant K
+            var K = target / sumMixOverPrice;
+
+            // 3. Output Results
+            var outputBody = document.getElementById("outputBody");
+            outputBody.innerHTML = "";
+            
+            var weightedCheck = 0;
+
+            trims.forEach(function(t) {
+                var elasticity = K / t.price;
+                weightedCheck += (elasticity * t.mix);
+                
+                var row = outputBody.insertRow();
+                row.innerHTML = `<td>${t.name}</td><td>$${t.price.toLocaleString()}</td><td>${(t.mix*100).toFixed(1)}%</td><td style="color:blue; font-weight:bold;">${elasticity.toFixed(4)}</td>`;
+            });
+
+            document.getElementById("outputTable").style.display = "table";
+            document.getElementById("result-area").innerText = "Constant (K): " + K.toFixed(2) + " | Weighted Avg Verification: " + weightedCheck.toFixed(4);
+        }
+    </script>
+</body>
+</html>
